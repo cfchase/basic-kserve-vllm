@@ -17,7 +17,9 @@ spec:
         - /models-cache
         - --port
         - "8080"
-      image: quay.io/rh-aiservices-bu/vllm-openai-ubi9:0.3.1
+        - --max-model-len
+        - "6144"
+      image: quay.io/rh-aiservices-bu/vllm-openai-ubi9:0.4.2
       name: kserve-container
       ports:
         - containerPort: 8080

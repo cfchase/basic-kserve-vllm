@@ -1,0 +1,36 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    openshift.io/display-name: vLLM 4 GPU
+  labels:
+    opendatahub.io/dashboard: "true"
+  name: vllm-runtime-4-gpu
+spec:
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+  containers:
+    - args:
+        - --port=8080
+        - --model=/mnt/models
+        - --served-model-name={{.Name}}
+        - --distributed-executor-backend=mp
+        - --tensor-parallel-size=4
+      command:
+        - python
+        - -m
+        - vllm.entrypoints.openai.api_server
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      image: quay.io/modh/vllm@sha256:60f335015eff8c99508ff421c80f5f7b23b1310d87b0d4086b6f76f9a136b5a4
+      name: kserve-container
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM
