@@ -1,49 +1,46 @@
-﻿---
-apiVersion: serving.kserve.io/v1alpha1
+﻿apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
   annotations:
     opendatahub.io/accelerator-name: migrated-gpu
     opendatahub.io/apiProtocol: REST
-    opendatahub.io/template-display-name: vLLM
-    opendatahub.io/template-name: vllm
-    openshift.io/display-name: mistral
-  name: mistral
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    opendatahub.io/template-display-name: vLLM custom
+    opendatahub.io/template-name: vllm-custom
+    openshift.io/display-name: llm
+  name: llm
   labels:
     opendatahub.io/dashboard: 'true'
 spec:
-  builtInAdapter:
-    modelLoadingTimeoutMillis: 90000
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: '8080'
   containers:
     - args:
-        - '--model'
-        - /mnt/models/
-        - '--download-dir'
-        - /models-cache
-        - '--port'
-        - '8080'
-        - '--max-model-len'
-        - '6144'
-      image: 'quay.io/rh-aiservices-bu/vllm-openai-ubi9:0.4.2'
+        - '--port=8080'
+        - '--model=/mnt/models'
+        - '--served-model-name={{.Name}}'
+        - '--distributed-executor-backend=mp'
+        - '--max-model-len=15344'
+      command:
+        - python
+        - '-m'
+        - vllm.entrypoints.openai.api_server
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      image: 'quay.io/modh/vllm:rhoai-2.10'
       name: kserve-container
       ports:
         - containerPort: 8080
-          name: http1
           protocol: TCP
-      resources:
-        limits:
-          cpu: '12'
-          memory: 24Gi
-        requests:
-          cpu: '4'
-          memory: 8Gi
       volumeMounts:
         - mountPath: /dev/shm
           name: shm
   multiModel: false
   supportedModelFormats:
     - autoSelect: true
-      name: pytorch
+      name: vLLM
   volumes:
     - emptyDir:
         medium: Memory
@@ -54,11 +51,8 @@ apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   annotations:
-    openshift.io/display-name: mistral
-    serving.knative.openshift.io/enablePassthrough: 'true'
-    sidecar.istio.io/inject: 'true'
-    sidecar.istio.io/rewriteAppHTTPProbers: 'true'
-  name: mistral
+    openshift.io/display-name: llm
+  name: llm
   labels:
     opendatahub.io/dashboard: 'true'
 spec:
@@ -67,14 +61,18 @@ spec:
     minReplicas: 1
     model:
       modelFormat:
-        name: pytorch
+        name: vLLM
       name: ''
       resources:
         limits:
+          cpu: '8'
+          memory: 24Gi
           nvidia.com/gpu: '1'
         requests:
+          cpu: 200m
+          memory: 16Gi
           nvidia.com/gpu: '1'
-      runtime: mistral
+      runtime: llm
       storage:
         key: aws-connection-my-storage
         path: models/Mistral-7B-Instruct-v0.2/
