@@ -8,7 +8,6 @@ metadata:
     opendatahub.io/template-display-name: vLLM custom
     opendatahub.io/template-name: vllm-custom
     openshift.io/display-name: llm
-    serving.kserve.io/deploymentMode: RawDeployment
   name: llm
   labels:
     opendatahub.io/dashboard: 'true'
@@ -30,7 +29,7 @@ spec:
       env:
         - name: HF_HOME
           value: /tmp/hf_home
-      image: 'quay.io/modh/vllm:rhoai-2.10'
+      image: 'quay.io/modh/vllm:rhoai-2.11'
       name: kserve-container
       ports:
         - containerPort: 8080
